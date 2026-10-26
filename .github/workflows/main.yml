@@ -1,0 +1,55 @@
+
+name: Build Para Takip APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Depoyu indir
+        uses: actions/checkout@v4
+
+      - name: Java 17 kur
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Android SDK bileşenlerini kur
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses
+
+      - name: Gradle kur
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: ZIP içindeki projeyi çıkar
+        run: |
+          unzip -o para-takip-android-proje.zip -d project
+          find project -maxdepth 4 -name build.gradle
+
+      - name: APK derle
+        run: |
+          PROJECT_DIR=$(find project -type f -name settings.gradle -printf '%h\n' | head -n 1)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Android projesi bulunamadı. ZIP içindeki klasör yapısını kontrol et."
+            exit 1
+          fi
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
+
+      - name: APK dosyasını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: para-takip-apk
+          path: project/**/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
